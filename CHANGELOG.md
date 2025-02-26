@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2
+
+Fixes:
+
+* Fixed plugin class name for Android and iOS
+
 ## 1.0.1
 
 * Fixed plugin class name for use
