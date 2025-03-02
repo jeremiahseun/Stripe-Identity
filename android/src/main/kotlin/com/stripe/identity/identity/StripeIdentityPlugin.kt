@@ -101,7 +101,7 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         val configuration =
             IdentityVerificationSheet.Configuration(
                 // Set the brand logo from the provided URL.
-                brandLogo = brandLogoUrl?.let { Uri.parse(it) }
+                brandLogo = brandLogoUrl?.let { Uri.parse(it) } ?: Uri.EMPTY
             )
 
         // Create an instance of the IdentityVerificationSheet.
