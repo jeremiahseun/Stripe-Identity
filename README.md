@@ -40,7 +40,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  stripe_identity_plugin: ^1.0.1
+  stripe_identity_plugin: ^1.0.3
 ```
 
 ## Usage

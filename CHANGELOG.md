@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3
+
+Fixes:
+
+* Fixed URI Image for Android
+
 ## 1.0.2
 
 Fixes:
