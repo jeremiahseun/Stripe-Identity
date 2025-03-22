@@ -38,6 +38,26 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private var identityVerificationSheet: IdentityVerificationSheet? = null
 
     /**
+     * The result callback to return to Flutter.
+     */
+    private var pendingResult: Result? = null
+
+    /**
+     * The verification session ID.
+     */
+    private var verificationSessionId: String? = null
+
+    /**
+     * The ephemeral key secret.
+     */
+    private var ephemeralKeySecret: String? = null
+
+    /**
+     * The brand logo URL.
+     */
+    private var brandLogoUrl: String? = null
+
+    /**
      * Called when the plugin is attached to the Flutter engine.
      *
      * @param flutterPluginBinding The Flutter plugin binding.
@@ -64,11 +84,11 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 // Extract the verification session ID, ephemeral key secret, and brand logo URL from the method call arguments.
                 val id = call.argument<String>("id")
                 val key = call.argument<String>("key")
-                val brandLogoUrl = call.argument<String>("brandLogoUrl")
+                brandLogoUrl = call.argument<String>("brandLogoUrl")
 
                 // Start the verification process if the required arguments are provided.
                 if (id != null && key != null) {
-                    startVerification(id, key, brandLogoUrl, result)
+                    startVerification(id, key, result)
                 } else {
                     // Return an error if the required arguments are missing.
                     result.error("INVALID_ARGUMENTS", "Missing id or key", null)
@@ -84,39 +104,22 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
      *
      * @param id The verification session ID.
      * @param key The ephemeral key secret.
-     * @param brandLogoUrl The URL of the brand logo to display.
      * @param result A closure to return the result of the verification flow to Flutter.
      */
-    private fun startVerification(id: String, key: String, brandLogoUrl: String?, result: Result) {
-        // Get the current activity.
+    private fun startVerification(id: String, key: String, result: Result) {
         val activity = activity
-        // Check if the activity is a FragmentActivity.
         if (activity !is FragmentActivity) {
-            // Return an error if the activity is not a FragmentActivity.
             result.error("NO_ACTIVITY", "Plugin requires a FragmentActivity.", null)
             return
         }
 
-        // Create a configuration for the IdentityVerificationSheet.
-        val configuration =
-            IdentityVerificationSheet.Configuration(
-                // Set the brand logo from the provided URL.
-                brandLogo = brandLogoUrl?.let { Uri.parse(it) } ?: Uri.EMPTY
-            )
+        pendingResult = result
+        verificationSessionId = id
+        ephemeralKeySecret = key
 
-        // Create an instance of the IdentityVerificationSheet.
-        identityVerificationSheet =
-            IdentityVerificationSheet.create(activity, configuration) { verificationFlowResult ->
-                // Handle the verification result.
-                handleVerificationResult(verificationFlowResult, result)
-            }
-
-        // Present the verification sheet on the UI thread.
         activity.runOnUiThread {
             identityVerificationSheet?.present(
-                // Set the verification session ID.
                 verificationSessionId = id,
-                // Set the ephemeral key secret.
                 ephemeralKeySecret = key
             )
         }
@@ -130,22 +133,17 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
      */
     private fun handleVerificationResult(
         verificationResult: IdentityVerificationSheet.VerificationFlowResult,
-        result: Result
+        result: Result?
     ) {
-        // Handle different verification results.
         when (verificationResult) {
-            // Verification completed successfully.
             is IdentityVerificationSheet.VerificationFlowResult.Completed -> {
-                result.success("completed")
+                result?.success("completed")
             }
-            // Verification canceled by the user.
             is IdentityVerificationSheet.VerificationFlowResult.Canceled -> {
-                result.success("canceled")
+                result?.success("canceled")
             }
-            // Verification failed.
             is IdentityVerificationSheet.VerificationFlowResult.Failed -> {
-                // Return an error to Flutter with the error message.
-                result.error(
+                result?.error(
                     "failed",
                     verificationResult.throwable.localizedMessage,
                     null
@@ -171,6 +169,18 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
      */
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         activity = binding.activity
+
+        if (activity is FragmentActivity) {
+            val configuration = IdentityVerificationSheet.Configuration(
+                brandLogo = brandLogoUrl?.let { Uri.parse(it) } ?: Uri.EMPTY
+            )
+            identityVerificationSheet = IdentityVerificationSheet.create(
+                activity as FragmentActivity,
+                configuration
+            ) { verificationFlowResult ->
+                handleVerificationResult(verificationFlowResult, pendingResult)
+            }
+        }
     }
 
     /**
