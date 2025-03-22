@@ -72,6 +72,31 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     /**
+     * Called when the plugin is attached to an activity.
+     *
+     * @param binding The activity plugin binding.
+     */
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        activity = binding.activity
+
+        // Check if the activity is a FragmentActivity.
+        if (activity is FragmentActivity) {
+            // Create a configuration for the IdentityVerificationSheet.
+            val configuration = IdentityVerificationSheet.Configuration(
+                brandLogo = brandLogoUrl?.let { Uri.parse(it) } ?: Uri.EMPTY
+            )
+
+            // Create an instance of the IdentityVerificationSheet.
+            identityVerificationSheet = IdentityVerificationSheet.create(
+                activity as FragmentActivity,
+                configuration
+            ) { verificationFlowResult ->
+                handleVerificationResult(verificationFlowResult, pendingResult)
+            }
+        }
+    }
+
+    /**
      * Called when a method call is received from the Flutter application.
      *
      * @param call The method call received from Flutter.
@@ -109,6 +134,7 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private fun startVerification(id: String, key: String, result: Result) {
         val activity = activity
         if (activity !is FragmentActivity) {
+            // Return an error if the activity is not a FragmentActivity.
             result.error("NO_ACTIVITY", "Plugin requires a FragmentActivity.", null)
             return
         }
@@ -117,9 +143,12 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         verificationSessionId = id
         ephemeralKeySecret = key
 
+        // Present the verification sheet on the UI thread.
         activity.runOnUiThread {
             identityVerificationSheet?.present(
+                // Set the verification session ID.
                 verificationSessionId = id,
+                // Set the ephemeral key secret.
                 ephemeralKeySecret = key
             )
         }
@@ -137,12 +166,15 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     ) {
         when (verificationResult) {
             is IdentityVerificationSheet.VerificationFlowResult.Completed -> {
+                // Verification completed successfully.
                 result?.success("completed")
             }
             is IdentityVerificationSheet.VerificationFlowResult.Canceled -> {
+                // Verification canceled by the user.
                 result?.success("canceled")
             }
             is IdentityVerificationSheet.VerificationFlowResult.Failed -> {
+                // Return an error to Flutter with the error message.
                 result?.error(
                     "failed",
                     verificationResult.throwable.localizedMessage,
@@ -160,27 +192,6 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         // Remove the method call handler to avoid leaks.
         channel.setMethodCallHandler(null)
-    }
-
-    /**
-     * Called when the plugin is attached to an activity.
-     *
-     * @param binding The activity plugin binding.
-     */
-    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-        activity = binding.activity
-
-        if (activity is FragmentActivity) {
-            val configuration = IdentityVerificationSheet.Configuration(
-                brandLogo = brandLogoUrl?.let { Uri.parse(it) } ?: Uri.EMPTY
-            )
-            identityVerificationSheet = IdentityVerificationSheet.create(
-                activity as FragmentActivity,
-                configuration
-            ) { verificationFlowResult ->
-                handleVerificationResult(verificationFlowResult, pendingResult)
-            }
-        }
     }
 
     /**
