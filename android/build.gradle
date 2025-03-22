@@ -51,10 +51,12 @@ android {
 
     dependencies {
         testImplementation("org.jetbrains.kotlin:kotlin-test")
-        testImplementation("org.mockito:mockito-core:5.0.0")
+        testImplementation("org.mockito:mockito-core:5.4.0")
         implementation('com.stripe:identity:20.48.2') {
             exclude group: 'com.stripe', module: 'ml-core-default'
     }
+        implementation('com.stripe:ml-core-default:20.48.2')
+        implementation('com.google.mlkit:common:18.11.0')
     }
 
     testOptions {
