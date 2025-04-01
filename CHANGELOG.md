@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.4
+
+Fixes:
+
+* Android Plugin Crash fixes
+
 ## 1.0.3
 
 Fixes:

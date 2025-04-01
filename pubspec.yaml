@@ -1,6 +1,7 @@
 name: stripe_identity_plugin
 description: "A Flutter plugin for implementing Stripe Identity Verification in your Flutter applications."
-version: 1.0.3
+version: 1.0.4
+maintainer: "Jeremiah Erinola - seunjeremiah@gmail.com"
 repository: "https://github.com/jeremiahseun/Stripe-Identity"
 homepage: "https://github.com/jeremiahseun/Stripe-Identity"
 
