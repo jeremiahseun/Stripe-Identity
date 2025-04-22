@@ -18,9 +18,6 @@ Otherwise, you get this screen instead:
 
 https://github.com/user-attachments/assets/d1a343c2-17dc-4bf0-b0c6-f9347e141e79
 
-
-
-
 ## Getting Started
 
 You can go to [Stripe Identity Website](https://stripe.com/identity) for more information on how to get started.
@@ -41,6 +38,32 @@ Add this to your package's `pubspec.yaml` file:
 ```yaml
 dependencies:
   stripe_identity_plugin: ^1.0.4
+```
+
+## Setup instructions
+
+### Android
+
+Add this under the `<application>` tag of your activity in `AndroidManifest.xml`.
+
+```xml
+<activity
+	android:name="com.stripe.android.identity.IdentityActivity"
+	android:exported="false"
+	android:theme="@style/StripeIdentityTheme"
+/>
+```
+
+In `android/app/main/src/res/values/styles.xml` add:
+
+```xml
+<style name="StripeIdentityTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+	<!-- Optional: customize colors -->
+	<item name="colorPrimary">#000000</item>
+	<item name="colorPrimaryVariant">#000000</item>
+	<item name="colorOnPrimary">#FFFFFF</item>
+	<item name="android:windowBackground">@android:color/white</item>
+<style>
 ```
 
 ## Usage
