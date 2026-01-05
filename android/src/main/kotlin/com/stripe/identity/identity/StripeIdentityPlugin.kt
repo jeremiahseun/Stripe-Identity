@@ -111,10 +111,11 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 val id = call.argument<String>("id")
                 val key = call.argument<String>("key")
                 brandLogoUrl = call.argument<String>("brandLogoUrl")
+                val styleMap = call.argument<Map<String, Any>>("style")
 
                 // Start the verification process if the required arguments are provided.
                 if (id != null && key != null) {
-                    startVerification(id, key, result)
+                    startVerification(id, key, styleMap, result)
                 } else {
                     // Return an error if the required arguments are missing.
                     result.error("INVALID_ARGUMENTS", "Missing id or key", null)
@@ -130,9 +131,10 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
      *
      * @param id The verification session ID.
      * @param key The ephemeral key secret.
+     * @param styleMap Optional styling configuration from Flutter.
      * @param result A closure to return the result of the verification flow to Flutter.
      */
-    private fun startVerification(id: String, key: String, result: Result) {
+    private fun startVerification(id: String, key: String, styleMap: Map<String, Any>?, result: Result) {
         val activity = activity
         if (activity !is ComponentActivity) {
             // Return an error if the activity is not a ComponentActivity.
