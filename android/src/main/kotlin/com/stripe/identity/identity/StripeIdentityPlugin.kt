@@ -3,6 +3,7 @@ package com.stripe.identity.identity
 import android.app.Activity
 import android.content.Context
 import android.net.Uri
+import androidx.activity.ComponentActivity
 import androidx.fragment.app.FragmentActivity
 import com.stripe.android.identity.IdentityVerificationSheet
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -79,8 +80,8 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         activity = binding.activity
 
-        // Check if the activity is a FragmentActivity.
-        if (activity is FragmentActivity) {
+        // Check if the activity is a ComponentActivity (or FragmentActivity).
+        if (activity is ComponentActivity) {
             // Create a configuration for the IdentityVerificationSheet.
             val configuration = IdentityVerificationSheet.Configuration(
                 brandLogo = brandLogoUrl?.let { Uri.parse(it) } ?: Uri.EMPTY
@@ -88,7 +89,7 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
             // Create an instance of the IdentityVerificationSheet.
             identityVerificationSheet = IdentityVerificationSheet.create(
-                activity as FragmentActivity,
+                activity as ComponentActivity,
                 configuration
             ) { verificationFlowResult ->
                 handleVerificationResult(verificationFlowResult, pendingResult)
@@ -110,10 +111,11 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 val id = call.argument<String>("id")
                 val key = call.argument<String>("key")
                 brandLogoUrl = call.argument<String>("brandLogoUrl")
+                val styleMap = call.argument<Map<String, Any>>("style")
 
                 // Start the verification process if the required arguments are provided.
                 if (id != null && key != null) {
-                    startVerification(id, key, result)
+                    startVerification(id, key, styleMap, result)
                 } else {
                     // Return an error if the required arguments are missing.
                     result.error("INVALID_ARGUMENTS", "Missing id or key", null)
@@ -129,13 +131,14 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
      *
      * @param id The verification session ID.
      * @param key The ephemeral key secret.
+     * @param styleMap Optional styling configuration from Flutter.
      * @param result A closure to return the result of the verification flow to Flutter.
      */
-    private fun startVerification(id: String, key: String, result: Result) {
+    private fun startVerification(id: String, key: String, styleMap: Map<String, Any>?, result: Result) {
         val activity = activity
-        if (activity !is FragmentActivity) {
-            // Return an error if the activity is not a FragmentActivity.
-            result.error("NO_ACTIVITY", "Plugin requires a FragmentActivity.", null)
+        if (activity !is ComponentActivity) {
+            // Return an error if the activity is not a ComponentActivity.
+            result.error("NO_ACTIVITY", "Plugin requires a ComponentActivity.", null)
             return
         }
 

@@ -1,6 +1,7 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'stripe_identity_plugin_method_channel.dart';
+import 'utils/identity_style.dart';
 
 abstract class IdentityPlatform extends PlatformInterface {
   /// Constructs a IdentityPlatform.
@@ -27,6 +28,7 @@ abstract class IdentityPlatform extends PlatformInterface {
     required String id,
     required String key,
     String? brandLogoUrl,
+    IdentityStyle? style,
   }) {
     throw UnimplementedError('startVerification() has not been implemented.');
   }

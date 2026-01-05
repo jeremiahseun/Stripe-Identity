@@ -36,8 +36,10 @@ public class StripeIdentityPlugin: NSObject, FlutterPlugin {
             }
             // Extract the brand logo URL from the arguments.
             let brandLogoUrl = args["brandLogoUrl"] as? String
+            // Extract the style configuration from the arguments.
+            let styleMap = args["style"] as? [String: Any]
             // Start the verification process.
-            startVerification(id: id, key: key, brandLogoUrl: brandLogoUrl, result: result)
+            startVerification(id: id, key: key, brandLogoUrl: brandLogoUrl, styleMap: styleMap, result: result)
         // Handle any other method calls.
         default:
             // Return a "not implemented" error.
@@ -51,8 +53,9 @@ public class StripeIdentityPlugin: NSObject, FlutterPlugin {
     ///   - id: The verification session ID.
     ///   - key: The ephemeral key secret.
     ///   - brandLogoUrl: The URL of the brand logo to display.
+    ///   - styleMap: Optional styling configuration from Flutter.
     ///   - result: A closure to return the result of the verification flow to Flutter.
-    private func startVerification(id: String, key: String, brandLogoUrl: String?, result: @escaping FlutterResult) {
+    private func startVerification(id: String, key: String, brandLogoUrl: String?, styleMap: [String: Any]?, result: @escaping FlutterResult) {
         // Get the root view controller of the application.
         guard let viewController = UIApplication.shared.windows.first?.rootViewController else {
             // Return an error if the root view controller cannot be found.

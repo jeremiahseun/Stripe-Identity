@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.5
+
+* **Added UI Customization:** Introduced `IdentityStyle` class to allow customizing button colors, text colors, and labels from Flutter.
+* **Improved Error Handling:** Deprecated raw `PlatformException` in favor of user-friendly error messages and parsed status codes.
+* **Fixed Android Themes:** Resolved crashes related to `Theme.AppCompat` by supporting `Theme.MaterialComponents`.
+* **Compatibility:** Verified support for Android 15 and 16KB page sizes (pure Kotlin implementation).
+* **Documentation:** Updated README with comprehensive setup instructions for Android (FragmentActivity, Themes) and iOS (Camera Permissions).
+
 ## 1.0.4
 
 Fixes:
