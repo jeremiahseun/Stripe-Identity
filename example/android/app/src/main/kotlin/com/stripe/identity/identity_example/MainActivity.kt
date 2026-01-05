@@ -1,5 +1,5 @@
 package com.stripe.identity.identity_example
 
-import io.flutter.embedding.android.FlutterFragmentActivity
+import io.flutter.embedding.android.FlutterActivity
 
-class MainActivity: FlutterFragmentActivity()
+class MainActivity: FlutterActivity()

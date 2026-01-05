@@ -2,8 +2,7 @@
     <application
         android:label="identity_example"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
-        android:theme="@style/AppTheme">
+        android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"
