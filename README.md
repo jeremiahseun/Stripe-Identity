@@ -28,6 +28,7 @@ This package is not endorsed by Stripe, but it is written to work seamlessly for
 - Easy integration with Stripe Identity Verification
 - Support for both Android and iOS platforms
 - Customizable brand logo display
+- **UI Customization** via `IdentityStyle`
 - Simple error handling and result parsing
 - Type-safe verification results
 
@@ -40,44 +41,97 @@ dependencies:
   stripe_identity_plugin: ^1.0.4
 ```
 
-## Setup instructions
+## Setup Instructions
 
 ### Android
 
-Add this under the `<application>` tag of your activity in `AndroidManifest.xml`.
+1. **Update MainActivity**
+   Change your `MainActivity.kt` to extend `FlutterFragmentActivity` instead of `FlutterActivity`. This is required because the Stripe SDK uses Android Fragments.
 
-```xml
-<activity
-	android:name="com.stripe.android.identity.IdentityActivity"
-	android:exported="false"
-	android:theme="@style/StripeIdentityTheme"
-/>
-```
+   ```kotlin
+   // android/app/src/main/kotlin/com/example/your_app/MainActivity.kt
+   import io.flutter.embedding.android.FlutterFragmentActivity
 
-In `android/app/main/src/res/values/styles.xml` add:
+   class MainActivity: FlutterFragmentActivity()
+   ```
 
-```xml
-<style name="StripeIdentityTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
-	<!-- Optional: customize colors -->
-	<item name="colorPrimary">#000000</item>
-	<item name="colorPrimaryVariant">#000000</item>
-	<item name="colorOnPrimary">#FFFFFF</item>
-	<item name="android:windowBackground">@android:color/white</item>
-<style>
-```
+2. **Configure Themes**
+   The Stripe Identity SDK requires a **Material Components** theme. Update your `styles.xml` to inherit from a Material Components theme.
+
+   **In `android/app/src/main/res/values/styles.xml`:**
+   ```xml
+   <style name="LaunchTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+       <!-- ... -->
+   </style>
+
+   <style name="NormalTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+       <item name="android:windowBackground">?android:colorBackground</item>
+   </style>
+   ```
+
+   **In `android/app/src/main/res/values-night/styles.xml` (optional):**
+   ```xml
+   <style name="LaunchTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+       <!-- ... -->
+   </style>
+
+   <style name="NormalTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+       <item name="android:windowBackground">?android:colorBackground</item>
+   </style>
+   ```
+
+3. **Add Application Theme (Recommended)**
+   To ensure the Stripe Identity Activity acts consistently with your app, add the `android:theme` attribute to your `AndroidManifest.xml` application tag.
+
+   ```xml
+   <application
+       android:label="identity_example"
+       android:name="${applicationName}"
+       android:theme="@style/NormalTheme"  <!-- Add this line -->
+       ... >
+   ```
+
+4. **Add Dependencies**
+   If you encounter theme issues, ensure you have the Material library in your `android/app/build.gradle`:
+
+   ```gradle
+   dependencies {
+       implementation 'com.google.android.material:material:1.11.0'
+   }
+   ```
+
+### iOS
+
+1. **Camera Permission**
+   Add the `NSCameraUsageDescription` key to your `ios/Runner/Info.plist` file. This is required for document scanning.
+
+   ```xml
+   <key>NSCameraUsageDescription</key>
+   <string>We need access to the camera to scan your identity documents.</string>
+   ```
 
 ## Usage
 
 ### Basic Implementation
 
 ```dart
+import 'package:stripe_identity_plugin/stripe_identity_plugin.dart';
+import 'package:stripe_identity_plugin/utils/identity_style.dart'; // Import for styling
+
 final stripeIdentity = StripeIdentityPlugin();
 
 // Start verification
 final (status, message) = await stripeIdentity.startVerification(
-  id: 'verification_session_id_from_your_server',
-  key: 'ephemeral_key_secret_from_your_server',
-  brandLogoUrl: 'https://your-domain.com/logo.png', // Optional
+  id: 'verification_session_id',
+  key: 'ephemeral_key_secret',
+  brandLogoUrl: 'https://your-domain.com/logo.png',
+
+  // Optional: Customize UI appearance
+  style: IdentityStyle(
+    buttonBackgroundColor: Colors.blue,
+    buttonTextColor: Colors.white,
+    navigationBarTitle: "Confirm Identity",
+  ),
 );
 
 // Handle the result
@@ -95,9 +149,9 @@ switch (status) {
 
 ### Important Notes
 
-1. Call your server endpoint to obtain the `verificationSessionId` and `ephemeralKeySecret` before starting the verification process.
-2. When providing a brand logo, ensure it's a square image with recommended dimensions of 32x32 points.
-3. The verification flow is handled entirely by Stripe's native SDK, ensuring a secure verification process.
+1. **Backend Integration**: You must call your backend server to obtain the `verificationSessionId` and `ephemeralKeySecret` **before** starting the verification process.
+2. **Brand Logo**: Ensure the brand logo is a square image (recommended 32x32 points).
+3. **Styling Limitations**: The native Stripe SDK has limited customization options. The `IdentityStyle` parameters are passed to the native platform, but visual changes depend on the underlying native theme/configuration support.
 
 ## Verification Results
 
@@ -118,6 +172,15 @@ Possible verification results:
 - iOS 13.0 or higher
 - Android API level 21 or higher
 - Flutter 3.0.0 or higher
+- Kotlin 1.9.0+ (Recommended)
+
+## Troubleshooting
+
+### Android: "Plugin requires a component activity"
+Ensure your `MainActivity` extends `FlutterFragmentActivity` as shown in the Android Setup section.
+
+### Android: "You need to use a Theme.AppCompat theme" or "createMdcTheme requires..."
+Ensure your `styles.xml` themes inherit from `Theme.MaterialComponents.Light.NoActionBar`.
 
 ## License
 
