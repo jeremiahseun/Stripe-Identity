@@ -36,9 +36,9 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/stripe_identity_plugin/ios"
 
 SPEC CHECKSUMS:
-  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
-  integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
-  stripe_identity_plugin: 517c2560636c841b06322eaf74a80501b2b119b0
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
+  stripe_identity_plugin: 86e3e858f8fe792f0c282c322051740b4dba1a92
   StripeCameraCore: 3b956e8e7216ddb811fb1c919978e82ad8a77006
   StripeCore: 880a68482cf78d4745c5213c2fd3446efc73574b
   StripeIdentity: 7abc952a34c85b5e445c65a9c6ce6819a5e1019e
@@ -46,4 +46,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: a57f30d18f102dd3ce366b1d62a55ecbef2158e5
 
-COCOAPODS: 1.15.2
+COCOAPODS: 1.16.2
