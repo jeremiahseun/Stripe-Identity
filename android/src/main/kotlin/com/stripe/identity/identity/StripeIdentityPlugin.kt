@@ -3,8 +3,9 @@ package com.stripe.identity.identity
 import android.app.Activity
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.activity.ComponentActivity
-import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
 import com.stripe.android.identity.IdentityVerificationSheet
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -18,6 +19,11 @@ import io.flutter.plugin.common.MethodChannel.Result
  * A Flutter plugin for Stripe Identity verification.
  */
 class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
+    companion object {
+        private const val TAG = "StripeIdentityPlugin"
+        private const val BRAND_LOGO_META_DATA_KEY = "com.stripe.identity.brand_logo_url"
+    }
+
     /**
      * The Flutter method channel used to communicate with the Flutter application.
      */
@@ -42,16 +48,6 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
      * The result callback to return to Flutter.
      */
     private var pendingResult: Result? = null
-
-    /**
-     * The verification session ID.
-     */
-    private var verificationSessionId: String? = null
-
-    /**
-     * The ephemeral key secret.
-     */
-    private var ephemeralKeySecret: String? = null
 
     /**
      * The brand logo URL.
@@ -80,20 +76,9 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         activity = binding.activity
 
-        // Check if the activity is a ComponentActivity (or FragmentActivity).
+        val activity = activity
         if (activity is ComponentActivity) {
-            // Create a configuration for the IdentityVerificationSheet.
-            val configuration = IdentityVerificationSheet.Configuration(
-                brandLogo = brandLogoUrl?.let { Uri.parse(it) } ?: Uri.EMPTY
-            )
-
-            // Create an instance of the IdentityVerificationSheet.
-            identityVerificationSheet = IdentityVerificationSheet.create(
-                activity as ComponentActivity,
-                configuration
-            ) { verificationFlowResult ->
-                handleVerificationResult(verificationFlowResult, pendingResult)
-            }
+            createIdentityVerificationSheet(activity, brandLogoUrl)
         }
     }
 
@@ -112,6 +97,15 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 val key = call.argument<String>("key")
                 brandLogoUrl = call.argument<String>("brandLogoUrl")
                 val styleMap = call.argument<Map<String, Any>>("style")
+
+                val activity = activity
+                if (activity is ComponentActivity &&
+                    identityVerificationSheet == null &&
+                    activity.lifecycle.currentState.isAtLeast(Lifecycle.State.INITIALIZED) &&
+                    !activity.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+                ) {
+                    createIdentityVerificationSheet(activity, brandLogoUrl)
+                }
 
                 // Start the verification process if the required arguments are provided.
                 if (id != null && key != null) {
@@ -134,7 +128,12 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
      * @param styleMap Optional styling configuration from Flutter.
      * @param result A closure to return the result of the verification flow to Flutter.
      */
-    private fun startVerification(id: String, key: String, styleMap: Map<String, Any>?, result: Result) {
+    private fun startVerification(
+        id: String,
+        key: String,
+        styleMap: Map<String, Any>?,
+        result: Result
+    ) {
         val activity = activity
         if (activity !is ComponentActivity) {
             // Return an error if the activity is not a ComponentActivity.
@@ -143,8 +142,15 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         }
 
         pendingResult = result
-        verificationSessionId = id
-        ephemeralKeySecret = key
+
+        if (identityVerificationSheet == null) {
+            result.error(
+                "NO_SHEET",
+                "Identity sheet is not initialized. Ensure plugin is attached before starting verification.",
+                null
+            )
+            return
+        }
 
         // Present the verification sheet on the UI thread.
         activity.runOnUiThread {
@@ -154,6 +160,60 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 // Set the ephemeral key secret.
                 ephemeralKeySecret = key
             )
+        }
+    }
+
+    private fun createIdentityVerificationSheet(activity: ComponentActivity, brandLogoUrl: String?) {
+        val resolvedBrandLogoUri = resolveBrandLogoUri(activity, brandLogoUrl)
+
+        val configuration = IdentityVerificationSheet.Configuration(
+            brandLogo = resolvedBrandLogoUri
+        )
+
+        identityVerificationSheet = IdentityVerificationSheet.create(
+            activity,
+            configuration
+        ) { verificationFlowResult ->
+            handleVerificationResult(verificationFlowResult, pendingResult)
+        }
+
+        Log.d(TAG, "Identity sheet initialized with brand logo URI: $resolvedBrandLogoUri")
+    }
+
+    private fun resolveBrandLogoUri(activity: ComponentActivity, runtimeBrandLogoUrl: String?): Uri {
+        runtimeBrandLogoUrl
+            ?.takeIf { it.isNotBlank() }
+            ?.let { return Uri.parse(it) }
+
+        val manifestLogoUrl = try {
+            val appInfo = activity.packageManager.getApplicationInfo(
+                activity.packageName,
+                android.content.pm.PackageManager.GET_META_DATA
+            )
+            appInfo.metaData?.getString(BRAND_LOGO_META_DATA_KEY)
+        } catch (error: Exception) {
+            null
+        }
+
+        manifestLogoUrl
+            ?.takeIf { it.isNotBlank() }
+            ?.let { return Uri.parse(it) }
+
+        return try {
+            val appInfo = activity.packageManager.getApplicationInfo(activity.packageName, 0)
+            val appIconResId = appInfo.icon
+            if (appIconResId != 0) {
+                Uri.Builder()
+                    .scheme("android.resource")
+                    .authority(activity.packageName)
+                    .appendPath(activity.resources.getResourceTypeName(appIconResId))
+                    .appendPath(activity.resources.getResourceEntryName(appIconResId))
+                    .build()
+            } else {
+                Uri.EMPTY
+            }
+        } catch (error: Exception) {
+            Uri.EMPTY
         }
     }
 
@@ -212,6 +272,7 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
      */
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
         activity = binding.activity
+        identityVerificationSheet = null
     }
 
     /**
