@@ -1,6 +1,1 @@
-enum VerificationResult {
-  completed,
-  canceled,
-  failed,
-  unknown,
-}
+enum VerificationResult { completed, canceled, failed, unknown }
