@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* **iOS:** Raised the minimum deployment target to iOS 15 to match the current Stripe Identity SDK.
+
 ## 1.0.5
 
 * **Added UI Customization:** Introduced `IdentityStyle` class to allow customizing button colors, text colors, and labels from Flutter.
