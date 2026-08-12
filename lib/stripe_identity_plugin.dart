@@ -82,20 +82,24 @@ class StripeIdentityPlugin {
       return _parseVerificationResult(result);
     } on StripeIdentityException catch (e) {
       if (kDebugMode) {
-        log("Error while starting verification\nThe message is: ${e.message} and the code is: ${e.code}",
-            name: "StripeIdentityPlugin");
+        log(
+          "Error while starting verification\nThe message is: ${e.message} and the code is: ${e.code}",
+          name: "StripeIdentityPlugin",
+        );
       }
       //! It will most likely result to this exception when:
       //? On the iOS side, [result(FlutterError)] is returned
       //? On the Android side, [result.error()] is returned
       return (
         VerificationResult.failed,
-        _formatErrorMessage(e.code, e.message)
+        _formatErrorMessage(e.code, e.message),
       );
     } catch (e) {
       if (kDebugMode) {
-        log("Error while starting verification\nThe error message is: ${e.toString()}",
-            name: "StripeIdentityPlugin");
+        log(
+          "Error while starting verification\nThe error message is: ${e.toString()}",
+          name: "StripeIdentityPlugin",
+        );
       }
       return (VerificationResult.unknown, e.toString());
     }
@@ -122,7 +126,8 @@ class StripeIdentityPlugin {
   }
 
   (VerificationResult status, String message) _parseVerificationResult(
-      String result) {
+    String result,
+  ) {
     switch (result) {
       case 'completed':
         //* The user has completed uploading their documents.

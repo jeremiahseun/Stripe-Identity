@@ -7,7 +7,7 @@ homepage: "https://github.com/jeremiahseun/Stripe-Identity"
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
-  flutter: '>=3.3.0'
+  flutter: '>=3.41.0'
 
 dependencies:
   flutter:
@@ -30,6 +30,8 @@ flutter:
         package: com.stripe.identity.identity
         pluginClass: StripeIdentityPlugin
       ios:
+        pluginClass: StripeIdentityPlugin
+      macos:
         pluginClass: StripeIdentityPlugin
 
 topics:
