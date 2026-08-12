@@ -15,7 +15,7 @@ A Flutter plugin to integrate Stripe Identity verification in iOS and Android ap
   s.source           = { :path => '.' }
   s.source_files = 'stripe_identity_plugin/Sources/stripe_identity_plugin/**/*.swift'
   s.dependency 'Flutter'
-  s.dependency 'StripeIdentity'
+  s.dependency 'StripeIdentity', '~> 25.14'
   s.platform = :ios, '13.0'
 
   # Flutter.framework does not contain a i386 slice.

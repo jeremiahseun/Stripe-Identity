@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0
+
+* **Swift Package Manager support:** The iOS plugin now ships a `Package.swift` alongside the existing podspec, so apps building with SPM no longer need CocoaPods for this plugin. CocoaPods remains supported.
+* **Pinned the Stripe Identity iOS SDK** to `25.14.x` for both SPM and CocoaPods, so both build systems resolve the same native SDK.
+* **Requires Flutter 3.41.0 or newer**, which is the first version that vends the `FlutterFramework` Swift package the plugin depends on.
+
 ## 1.0.5
 
 * **Added UI Customization:** Introduced `IdentityStyle` class to allow customizing button colors, text colors, and labels from Flutter.

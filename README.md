@@ -41,6 +41,12 @@ dependencies:
   stripe_identity_plugin: latest
 ```
 
+### Requirements
+
+- Flutter 3.41.0 or newer
+- iOS 13.0 or newer
+- On iOS, the plugin builds with either **Swift Package Manager** or **CocoaPods**. Both resolve the Stripe Identity iOS SDK `25.14.x`; no extra setup is needed for either.
+
 ## Setup Instructions
 
 ### Android
