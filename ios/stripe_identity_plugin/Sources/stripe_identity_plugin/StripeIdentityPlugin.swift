@@ -66,7 +66,7 @@ public class StripeIdentityPlugin: NSObject, FlutterPlugin {
         // Create a configuration for the IdentityVerificationSheet.
         let configuration = makeConfiguration(
             // Load the brand logo from the URL.
-            brandLogo: loadBrandLogo(from: brandLogoUrl) ?? UIImage(systemName: "plus") ?? UIImage(),
+            brandLogo: loadBrandLogo(from: brandLogoUrl) ?? appIconImage() ?? UIImage(),
             styleMap: styleMap
         )
 
@@ -161,20 +161,29 @@ public class StripeIdentityPlugin: NSObject, FlutterPlugin {
     /// Loads the brand logo from the given URL.
     ///
     /// - Parameter urlString: The URL of the brand logo.
-    /// - Returns: The brand logo image, or a default image if the URL is invalid or the image cannot be loaded.
+    /// - Returns: The brand logo image, or `nil` if the URL is missing or invalid, or the image cannot be loaded.
     private func loadBrandLogo(from urlString: String?) -> UIImage? {
-        // Check if the URL string is valid.
         guard let urlString = urlString,
-              // Create a URL from the string.
               let url = URL(string: urlString),
-              // Load the data from the URL.
-              let data = try? Data(contentsOf: url),
-              // Create an image from the data.
-              let image = UIImage(data: data) else {
-            // Return a default image if the URL is invalid or the image cannot be loaded.
-            return UIImage(systemName: "plus") ?? UIImage()
+              let data = try? Data(contentsOf: url) else {
+            return nil
         }
-        // Return the loaded image.
-        return image
+        return UIImage(data: data)
+    }
+
+    /// The host app's primary icon, used as the brand logo when no logo URL is provided or it fails to load.
+    ///
+    /// This mirrors the Android plugin, which falls back to the application icon. It reads the
+    /// primary icon declared in the app's Info.plist (`CFBundleIcons`).
+    ///
+    /// - Returns: The app icon, or `nil` if it cannot be resolved (the caller then uses an empty image).
+    private func appIconImage() -> UIImage? {
+        guard let icons = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
+              let primaryIcon = icons["CFBundlePrimaryIcon"] as? [String: Any],
+              let iconFiles = primaryIcon["CFBundleIconFiles"] as? [String],
+              let iconName = iconFiles.last else {
+            return nil
+        }
+        return UIImage(named: iconName)
     }
 }

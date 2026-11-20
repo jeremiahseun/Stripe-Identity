@@ -37,17 +37,17 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  stripe_identity_plugin: latest
+  stripe_identity_plugin: ^2.0.0
 ```
 
 ### Requirements
 
 | | Minimum |
 | --- | --- |
-| Flutter / Dart | 3.41.0 / 3.11.0 |
+| Flutter / Dart | 3.44.0 / 3.12.0 |
 | iOS | 15.0 |
-| Android `minSdk` | 24 (Flutter 3.50's default; set `minSdk = 24` on older Flutter) |
-| Android Kotlin Gradle Plugin | 2.1 or newer (Stripe's Android SDK is compiled with Kotlin 2.2) |
+| Android `minSdk` | 24 (Flutter 3.50's default; set `minSdk = 24` explicitly on older Flutter) |
+| Android Kotlin | 2.1 or newer (Stripe's Android SDK is compiled with Kotlin 2.2; Flutter 3.44+ already ships newer) |
 | Java | 17 |
 
 **iOS dependency managers.** The plugin supports both **Swift Package Manager** (recommended, and the
@@ -57,6 +57,20 @@ default from Flutter 3.44) and **CocoaPods**. No extra setup is needed for eithe
   (Stripe's Swift package uses `swift-tools-version:6.1`).
 - CocoaPods resolves `StripeIdentity ~> 26.15`. CocoaPods trunk stops at 26.15.x, so the iOS brand color
   (which needs SDK 26.16) is only applied when building with Swift Package Manager.
+
+**Android and Kotlin.** The plugin uses AGP's *built-in Kotlin* and does not apply the Kotlin Gradle Plugin,
+so it does not trigger Flutter's "plugins that apply KGP" warning. It works whether your app has
+`android.builtInKotlin=true` or keeps it `false`.
+
+### Upgrading from 1.x
+
+1. Update Flutter to 3.44 or newer (stay on `1.0.5` if you cannot).
+2. Android: set `minSdk = 24` in `android/app/build.gradle` and use Java 17.
+3. Android (optional): set the brand logo and color in `AndroidManifest.xml` (see [Android setup](#android)); the `brandLogoUrl` argument is ignored on Android.
+4. iOS: raise your deployment target to 15.0 if needed; with Swift Package Manager use Xcode 16.3+.
+5. Remove uses of the deprecated `IdentityStyle` options `buttonTextColor`, `buttonLabel` and `navigationBarTitle` (they never had any effect).
+
+See the [CHANGELOG](CHANGELOG.md) for the full list of changes.
 
 ## Setup Instructions
 
@@ -188,7 +202,7 @@ switch (status) {
 ### Important Notes
 
 1. **Backend Integration**: You must call your backend server to obtain the `verificationSessionId` and `ephemeralKeySecret` **before** starting the verification process.
-2. **Brand Logo**: Ensure the brand logo is a square image (recommended 32x32 points). On Android it is configured in `AndroidManifest.xml`.
+2. **Brand Logo**: Ensure the brand logo is a square image (recommended 32x32 points). If no logo is provided (or it fails to load), the app icon is used on both platforms. On Android the logo is configured in `AndroidManifest.xml`.
 3. **Styling Limitations**: See [Styling](#styling).
 
 ### Styling
@@ -198,7 +212,7 @@ customize (see [#15](https://github.com/jeremiahseun/Stripe-Identity/issues/15))
 
 | Option | iOS | Android |
 | --- | --- | --- |
-| `brandLogoUrl` argument | Yes | No, use the manifest entry |
+| `brandLogoUrl` argument (falls back to the app icon) | Yes | No, use the manifest entry (falls back to the app icon) |
 | `IdentityStyle.buttonBackgroundColor` | Yes (Swift Package Manager only) | No, use the manifest entry |
 | `buttonTextColor`, `buttonLabel`, `navigationBarTitle` | No (deprecated, no effect) | No (deprecated, no effect) |
 
@@ -225,6 +239,9 @@ Ensure your `MainActivity` extends `FlutterFragmentActivity` as shown in the And
 
 ### Android: "Module was compiled with an incompatible version of Kotlin"
 The Stripe Identity Android SDK is compiled with Kotlin 2.2. Use Kotlin Gradle Plugin 2.1 or newer in your app.
+
+### Android: "The 'org.jetbrains.kotlin.android' plugin is not compatible with built-in Kotlin"
+This comes from your *app*, not this plugin. If you enabled `android.builtInKotlin=true`, remove the `kotlin-android` / `org.jetbrains.kotlin.android` plugin from your app's Gradle files (see [Flutter's guide](https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-app-developers)), or set it back to `false`.
 
 ### Android: manifest merger error mentioning `minSdkVersion 21`
 Set `minSdk = 24` in `android/app/build.gradle`.

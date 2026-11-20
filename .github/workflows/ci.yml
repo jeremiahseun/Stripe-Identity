@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        flutter: ["3.41.x", "any"] # "any" = latest stable
+        flutter: ["3.44.x", "any"] # "any" = latest stable
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
