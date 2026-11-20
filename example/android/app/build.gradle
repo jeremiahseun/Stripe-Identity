@@ -29,8 +29,8 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     defaultConfig {
@@ -38,7 +38,7 @@ android {
         applicationId = "com.stripe.identity.identity_example"
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
-        minSdk = flutter.minSdkVersion
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutterVersionCode.toInteger()
         versionName = flutterVersionName
@@ -52,8 +52,11 @@ android {
         }
     }
 
-    kotlinOptions {
-        jvmTarget = "1.8"
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 
@@ -62,5 +65,5 @@ flutter {
 }
 
 dependencies {
-    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'com.google.android.material:material:1.13.0'
 }

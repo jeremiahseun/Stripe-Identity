@@ -2,6 +2,7 @@ package com.stripe.identity.identity
 
 import android.app.Activity
 import android.content.Context
+import android.graphics.Color
 import android.net.Uri
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -22,6 +23,7 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     companion object {
         private const val TAG = "StripeIdentityPlugin"
         private const val BRAND_LOGO_META_DATA_KEY = "com.stripe.identity.brand_logo_url"
+        private const val BRAND_COLOR_META_DATA_KEY = "com.stripe.identity.brand_color"
     }
 
     /**
@@ -96,7 +98,10 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 val id = call.argument<String>("id")
                 val key = call.argument<String>("key")
                 brandLogoUrl = call.argument<String>("brandLogoUrl")
-                val styleMap = call.argument<Map<String, Any>>("style")
+                // Note: the Stripe Android SDK fixes its configuration (logo, brand color) when the
+                // sheet is created, which must happen before the activity starts. Both are therefore
+                // read from AndroidManifest meta-data; per-call `brandLogoUrl`/`style` values from
+                // Dart cannot be applied on Android.
 
                 val activity = activity
                 if (activity is ComponentActivity &&
@@ -109,7 +114,7 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
                 // Start the verification process if the required arguments are provided.
                 if (id != null && key != null) {
-                    startVerification(id, key, styleMap, result)
+                    startVerification(id, key, result)
                 } else {
                     // Return an error if the required arguments are missing.
                     result.error("INVALID_ARGUMENTS", "Missing id or key", null)
@@ -125,13 +130,11 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
      *
      * @param id The verification session ID.
      * @param key The ephemeral key secret.
-     * @param styleMap Optional styling configuration from Flutter.
      * @param result A closure to return the result of the verification flow to Flutter.
      */
     private fun startVerification(
         id: String,
         key: String,
-        styleMap: Map<String, Any>?,
         result: Result
     ) {
         val activity = activity
@@ -167,7 +170,8 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         val resolvedBrandLogoUri = resolveBrandLogoUri(activity, brandLogoUrl)
 
         val configuration = IdentityVerificationSheet.Configuration(
-            brandLogo = resolvedBrandLogoUri
+            brandLogo = resolvedBrandLogoUri,
+            brandColor = resolveBrandColor(activity)
         )
 
         identityVerificationSheet = IdentityVerificationSheet.create(
@@ -180,22 +184,45 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         Log.d(TAG, "Identity sheet initialized with brand logo URI: $resolvedBrandLogoUri")
     }
 
+    /**
+     * Reads a string `<meta-data>` value from the host app's `<application>` manifest entry.
+     */
+    private fun readManifestMetaData(activity: ComponentActivity, key: String): String? {
+        return try {
+            val appInfo = activity.packageManager.getApplicationInfo(
+                activity.packageName,
+                android.content.pm.PackageManager.GET_META_DATA
+            )
+            appInfo.metaData?.getString(key)
+        } catch (error: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Resolves the optional brand color from the `com.stripe.identity.brand_color` manifest
+     * meta-data entry. Accepts `#RRGGBB` or `#AARRGGBB`; returns `null` (SDK default) if the entry
+     * is missing or invalid.
+     */
+    private fun resolveBrandColor(activity: ComponentActivity): Int? {
+        val raw = readManifestMetaData(activity, BRAND_COLOR_META_DATA_KEY)
+            ?.takeIf { it.isNotBlank() }
+            ?: return null
+
+        return try {
+            Color.parseColor(raw.trim())
+        } catch (error: IllegalArgumentException) {
+            Log.w(TAG, "Ignoring invalid $BRAND_COLOR_META_DATA_KEY value \"$raw\" (expected #RRGGBB or #AARRGGBB)")
+            null
+        }
+    }
+
     private fun resolveBrandLogoUri(activity: ComponentActivity, runtimeBrandLogoUrl: String?): Uri {
         runtimeBrandLogoUrl
             ?.takeIf { it.isNotBlank() }
             ?.let { return Uri.parse(it) }
 
-        val manifestLogoUrl = try {
-            val appInfo = activity.packageManager.getApplicationInfo(
-                activity.packageName,
-                android.content.pm.PackageManager.GET_META_DATA
-            )
-            appInfo.metaData?.getString(BRAND_LOGO_META_DATA_KEY)
-        } catch (error: Exception) {
-            null
-        }
-
-        manifestLogoUrl
+        readManifestMetaData(activity, BRAND_LOGO_META_DATA_KEY)
             ?.takeIf { it.isNotBlank() }
             ?.let { return Uri.parse(it) }
 
@@ -273,6 +300,13 @@ class StripeIdentityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
         activity = binding.activity
         identityVerificationSheet = null
+
+        // The new activity has not started yet, so the sheet (which registers an activity result
+        // launcher) must be recreated now, otherwise every later call fails with NO_SHEET.
+        val activity = activity
+        if (activity is ComponentActivity) {
+            createIdentityVerificationSheet(activity, brandLogoUrl)
+        }
     }
 
     /**

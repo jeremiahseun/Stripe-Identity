@@ -13,7 +13,7 @@ let package = Package(
     ],
     dependencies: [
         .package(name: "FlutterFramework", path: "../FlutterFramework"),
-        .package(url: "https://github.com/stripe/stripe-ios.git", from: "26.0.0")
+        .package(url: "https://github.com/stripe/stripe-ios.git", from: "26.16.0")
     ],
     targets: [
         .target(

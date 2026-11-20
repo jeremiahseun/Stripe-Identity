@@ -56,17 +56,18 @@ public class StripeIdentityPlugin: NSObject, FlutterPlugin {
     ///   - styleMap: Optional styling configuration from Flutter.
     ///   - result: A closure to return the result of the verification flow to Flutter.
     private func startVerification(id: String, key: String, brandLogoUrl: String?, styleMap: [String: Any]?, result: @escaping FlutterResult) {
-        // Get the root view controller of the application.
-        guard let viewController = UIApplication.shared.windows.first?.rootViewController else {
+        // Get the top-most view controller of the foreground window scene.
+        guard let viewController = topViewController() else {
             // Return an error if the root view controller cannot be found.
             result(FlutterError(code: "NO_VIEW_CONTROLLER", message: "Unable to get the root view controller", details: nil))
             return
         }
 
         // Create a configuration for the IdentityVerificationSheet.
-        let configuration = IdentityVerificationSheet.Configuration(
+        let configuration = makeConfiguration(
             // Load the brand logo from the URL.
-            brandLogo: loadBrandLogo(from: brandLogoUrl) ?? UIImage(systemName: "plus") ?? UIImage()
+            brandLogo: loadBrandLogo(from: brandLogoUrl) ?? UIImage(systemName: "plus") ?? UIImage(),
+            styleMap: styleMap
         )
 
         // Create an instance of the IdentityVerificationSheet.
@@ -101,6 +102,60 @@ public class StripeIdentityPlugin: NSObject, FlutterPlugin {
                 result("unknown")
             }
         }
+    }
+
+    /// Builds the Stripe sheet configuration.
+    ///
+    /// `Configuration.brandColor` only exists in stripe-ios 26.16.0 and later. The Swift Package
+    /// declares `from: "26.16.0"`, so the API is always available there. CocoaPods trunk stops at
+    /// StripeIdentity 26.15.0, so CocoaPods builds compile without it and ignore the brand color.
+    ///
+    /// - Parameters:
+    ///   - brandLogo: The brand logo image.
+    ///   - styleMap: Optional styling configuration from Flutter.
+    private func makeConfiguration(brandLogo: UIImage, styleMap: [String: Any]?) -> IdentityVerificationSheet.Configuration {
+        #if SWIFT_PACKAGE
+        var configuration = IdentityVerificationSheet.Configuration(brandLogo: brandLogo)
+        // The only public styling option besides the logo; the SDK picks black or white button
+        // text for contrast.
+        configuration.brandColor = brandColor(from: styleMap)
+        return configuration
+        #else
+        return IdentityVerificationSheet.Configuration(brandLogo: brandLogo)
+        #endif
+    }
+
+    /// Finds the view controller the verification sheet should be presented from.
+    ///
+    /// Uses the foreground-active window scene (falling back to any connected scene) and walks up
+    /// to the top-most presented view controller, so presenting works in multi-scene apps and when
+    /// another view controller is already being presented.
+    private func topViewController() -> UIViewController? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
+        let window = scene?.windows.first(where: { $0.isKeyWindow }) ?? scene?.windows.first
+        var top = window?.rootViewController
+        while let presented = top?.presentedViewController {
+            top = presented
+        }
+        return top
+    }
+
+    /// Reads the optional brand color from the style map sent by Flutter.
+    ///
+    /// Flutter encodes colors as 32-bit ARGB integers (`Color.toARGB32()`).
+    ///
+    /// - Parameter styleMap: The style configuration from Flutter, if any.
+    /// - Returns: The brand color, or `nil` to use the Stripe SDK default.
+    private func brandColor(from styleMap: [String: Any]?) -> UIColor? {
+        guard let argb = (styleMap?["buttonBackgroundColor"] as? NSNumber)?.uint32Value else {
+            return nil
+        }
+        let alpha = CGFloat((argb >> 24) & 0xFF) / 255
+        let red = CGFloat((argb >> 16) & 0xFF) / 255
+        let green = CGFloat((argb >> 8) & 0xFF) / 255
+        let blue = CGFloat(argb & 0xFF) / 255
+        return UIColor(red: red, green: green, blue: blue, alpha: alpha)
     }
 
     /// Loads the brand logo from the given URL.

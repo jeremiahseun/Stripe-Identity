@@ -2,14 +2,14 @@ group = "com.stripe.identity.identity"
 version = "1.0-SNAPSHOT"
 
 buildscript {
-    ext.kotlin_version = "1.9.22"
+    ext.kotlin_version = "2.2.21"
     repositories {
         google()
         mavenCentral()
     }
 
     dependencies {
-        classpath("com.android.tools.build:gradle:8.1.1")
+        classpath("com.android.tools.build:gradle:8.11.1")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
     }
 }
@@ -29,15 +29,11 @@ android {
         namespace = "com.stripe.identity.identity"
     }
 
-    compileSdk = 34
+    compileSdk = 36
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-
-    kotlinOptions {
-        jvmTarget = "1.8"
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     sourceSets {
@@ -46,13 +42,13 @@ android {
     }
 
     defaultConfig {
-        minSdk = 21
+        minSdk = 24
     }
 
     dependencies {
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.4.0")
-        implementation('com.stripe:identity:22.5.0')
+        implementation('com.stripe:identity:23.26.0')
     }
 
     testOptions {
@@ -65,5 +61,11 @@ android {
                showStandardStreams = true
             }
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }

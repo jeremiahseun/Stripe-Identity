@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main, pre-spm]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dart:
+    name: Dart analyze & test (Flutter ${{ matrix.flutter == 'any' && 'latest stable' || matrix.flutter }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        flutter: ["3.41.x", "any"] # "any" = latest stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ matrix.flutter }}
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze lib test
+      - run: flutter test
+      - name: Example app tests
+        working-directory: example
+        run: |
+          cp env.example .env
+          flutter pub get
+          flutter test
+      - name: pub.dev dry run
+        if: matrix.flutter == 'any'
+        run: flutter pub publish --dry-run
+
+  android:
+    name: Android build & unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Build example APK
+        working-directory: example
+        run: |
+          cp env.example .env
+          flutter pub get
+          flutter build apk --debug
+      - name: Plugin Kotlin unit tests
+        working-directory: example/android
+        run: ./gradlew :stripe_identity_plugin:testDebugUnitTest
+
+  ios:
+    name: iOS build (${{ matrix.manager }})
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        manager: [swift-package-manager, cocoapods]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Select dependency manager
+        run: |
+          if [ "${{ matrix.manager }}" = "swift-package-manager" ]; then
+            flutter config --enable-swift-package-manager
+          else
+            flutter config --no-enable-swift-package-manager
+          fi
+      - name: Build example (no codesign)
+        working-directory: example
+        run: |
+          cp env.example .env
+          flutter pub get
+          flutter build ios --debug --no-codesign
+      - name: Plugin must not be a CocoaPod when using Swift Package Manager
+        if: matrix.manager == 'swift-package-manager'
+        working-directory: example/ios
+        run: |
+          if [ -f Podfile.lock ] && grep -q "stripe_identity_plugin" Podfile.lock; then
+            echo "stripe_identity_plugin was resolved through CocoaPods"; exit 1
+          fi
+      - name: Lint podspec
+        if: matrix.manager == 'cocoapods'
+        run: pod lib lint ios/stripe_identity_plugin.podspec --skip-tests --use-modular-headers --allow-warnings

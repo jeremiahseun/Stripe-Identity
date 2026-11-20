@@ -27,8 +27,7 @@ This package is not endorsed by Stripe, but it is written to work seamlessly for
 
 - Easy integration with Stripe Identity Verification
 - Support for both Android and iOS platforms
-- Customizable brand logo display
-- **UI Customization** via `IdentityStyle`
+- Customizable brand logo and brand color (see [Styling](#styling))
 - Simple error handling and result parsing
 - Type-safe verification results
 
@@ -43,9 +42,21 @@ dependencies:
 
 ### Requirements
 
-- Flutter 3.41.0 or newer
-- iOS 15.0 or newer
-- On iOS, the plugin builds with either **Swift Package Manager** or **CocoaPods**. Both resolve the Stripe Identity iOS SDK `26.x`; no extra setup is needed for either.
+| | Minimum |
+| --- | --- |
+| Flutter / Dart | 3.41.0 / 3.11.0 |
+| iOS | 15.0 |
+| Android `minSdk` | 24 (Flutter 3.50's default; set `minSdk = 24` on older Flutter) |
+| Android Kotlin Gradle Plugin | 2.1 or newer (Stripe's Android SDK is compiled with Kotlin 2.2) |
+| Java | 17 |
+
+**iOS dependency managers.** The plugin supports both **Swift Package Manager** (recommended, and the
+default from Flutter 3.44) and **CocoaPods**. No extra setup is needed for either.
+
+- Swift Package Manager resolves the Stripe iOS SDK `26.16` or newer and needs **Xcode 16.3+**
+  (Stripe's Swift package uses `swift-tools-version:6.1`).
+- CocoaPods resolves `StripeIdentity ~> 26.15`. CocoaPods trunk stops at 26.15.x, so the iOS brand color
+  (which needs SDK 26.16) is only applied when building with Swift Package Manager.
 
 ## Setup Instructions
 
@@ -97,13 +108,32 @@ dependencies:
        ... >
    ```
 
-4. **Add Dependencies**
+4. **Set `minSdk` to 24**
+   The Stripe Identity Android SDK (23.x) requires API 24. Flutter 3.50 already defaults to it; on older
+   Flutter versions set it in `android/app/build.gradle`: `minSdk = 24`.
+
+5. **Add Dependencies**
    If you encounter theme issues, ensure you have the Material library in your `android/app/build.gradle`:
 
    ```gradle
    dependencies {
-       implementation 'com.google.android.material:material:1.11.0'
+       implementation 'com.google.android.material:material:1.13.0'
    }
+   ```
+
+6. **Brand logo and color (optional)**
+   On Android the Stripe sheet is created before Dart code runs, so the logo and brand color are read from
+   `AndroidManifest.xml` (the `brandLogoUrl` argument is ignored on Android):
+
+   ```xml
+   <application ...>
+       <!-- Square brand logo shown in the Stripe flow. Defaults to your app icon. -->
+       <meta-data android:name="com.stripe.identity.brand_logo_url"
+                  android:value="https://your-domain.com/logo.png" />
+       <!-- Primary button color: #RRGGBB or #AARRGGBB. Defaults to the Stripe style. -->
+       <meta-data android:name="com.stripe.identity.brand_color"
+                  android:value="#635BFF" />
+   </application>
    ```
 
 ### iOS
@@ -116,11 +146,16 @@ dependencies:
    <string>We need access to the camera to scan your identity documents.</string>
    ```
 
+2. **Dependency manager**
+   Nothing to configure. With Flutter's Swift Package Manager integration enabled the plugin is added as a
+   Swift package; otherwise it is installed through CocoaPods. See [Requirements](#requirements).
+
 ## Usage
 
 ### Basic Implementation
 
 ```dart
+import 'package:flutter/material.dart';
 import 'package:stripe_identity_plugin/stripe_identity_plugin.dart';
 import 'package:stripe_identity_plugin/utils/identity_style.dart'; // Import for styling
 
@@ -132,12 +167,9 @@ final (status, message) = await stripeIdentity.startVerification(
   key: 'ephemeral_key_secret',
   brandLogoUrl: 'https://your-domain.com/logo.png',
 
-  // Optional: Customize UI appearance
-  style: IdentityStyle(
-    buttonBackgroundColor: Colors.blue,
-    buttonTextColor: Colors.white,
-    navigationBarTitle: "Confirm Identity",
-  ),
+  // Optional: brand color for the primary buttons (iOS with Swift Package Manager;
+  // on Android use the manifest entry instead, see Setup)
+  style: const IdentityStyle(buttonBackgroundColor: Colors.blue),
 );
 
 // Handle the result
@@ -156,8 +188,21 @@ switch (status) {
 ### Important Notes
 
 1. **Backend Integration**: You must call your backend server to obtain the `verificationSessionId` and `ephemeralKeySecret` **before** starting the verification process.
-2. **Brand Logo**: Ensure the brand logo is a square image (recommended 32x32 points).
-3. **Styling Limitations**: The native Stripe SDK has limited customization options. The `IdentityStyle` parameters are passed to the native platform, but visual changes depend on the underlying native theme/configuration support.
+2. **Brand Logo**: Ensure the brand logo is a square image (recommended 32x32 points). On Android it is configured in `AndroidManifest.xml`.
+3. **Styling Limitations**: See [Styling](#styling).
+
+### Styling
+
+The native Stripe SDKs only expose a brand logo and a brand color publicly, so that is all this plugin can
+customize (see [#15](https://github.com/jeremiahseun/Stripe-Identity/issues/15)).
+
+| Option | iOS | Android |
+| --- | --- | --- |
+| `brandLogoUrl` argument | Yes | No, use the manifest entry |
+| `IdentityStyle.buttonBackgroundColor` | Yes (Swift Package Manager only) | No, use the manifest entry |
+| `buttonTextColor`, `buttonLabel`, `navigationBarTitle` | No (deprecated, no effect) | No (deprecated, no effect) |
+
+More detail is in [STYLING_AND_ERROR_HANDLING.md](STYLING_AND_ERROR_HANDLING.md).
 
 ## Verification Results
 
@@ -173,17 +218,19 @@ Possible verification results:
 - `failed`: Verification failed (includes error message)
 - `unknown`: Unexpected error occurred
 
-## Requirements
-
-- iOS 15.0 or higher
-- Android API level 21 or higher
-- Flutter 3.0.0 or higher
-- Kotlin 1.9.0+ (Recommended)
-
 ## Troubleshooting
 
 ### Android: "Plugin requires a component activity"
 Ensure your `MainActivity` extends `FlutterFragmentActivity` as shown in the Android Setup section.
+
+### Android: "Module was compiled with an incompatible version of Kotlin"
+The Stripe Identity Android SDK is compiled with Kotlin 2.2. Use Kotlin Gradle Plugin 2.1 or newer in your app.
+
+### Android: manifest merger error mentioning `minSdkVersion 21`
+Set `minSdk = 24` in `android/app/build.gradle`.
+
+### iOS: Swift Package resolution fails with a `swift-tools-version` error
+Stripe's Swift package needs Xcode 16.3 or newer.
 
 ### Android: "You need to use a Theme.AppCompat theme" or "createMdcTheme requires..."
 Ensure your `styles.xml` themes inherit from `Theme.MaterialComponents.Light.NoActionBar`.

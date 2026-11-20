@@ -19,137 +19,74 @@ PlatformException(failed, sessionID: placeholder_id and ephemeralKey: placeholde
   - "Unable to present verification screen. Please try again."
   - "Verification failed. Please try again."
 
-### 2. **UI Customization Support**
+### 2. **UI Customization (`IdentityStyle`)**
 
-#### New `IdentityStyle` Class
-Created a new configuration class that allows customization from Flutter:
+The native Stripe Identity SDKs expose a very small *public* styling surface, so `IdentityStyle`
+can only map onto that. See [issue #15](https://github.com/jeremiahseun/Stripe-Identity/issues/15).
 
-```dart
-class IdentityStyle {
-  final Color? buttonBackgroundColor;
-  final Color? buttonTextColor;
-  final String? buttonLabel;
-  final String? navigationBarTitle;
-}
+| Option                  | iOS                         | Android                                  |
+| ----------------------- | --------------------------- | ---------------------------------------- |
+| `buttonBackgroundColor` | Yes, with Swift Package Manager (Stripe iOS SDK 26.16+) | Via `AndroidManifest.xml` only (see below) |
+| `buttonTextColor`       | No (deprecated, no effect)  | No (deprecated, no effect)               |
+| `buttonLabel`           | No (deprecated, no effect)  | No (deprecated, no effect)               |
+| `navigationBarTitle`    | No (deprecated, no effect)  | No (deprecated, no effect)               |
+
+#### Why the limits
+
+- **iOS:** `IdentityVerificationSheet.Configuration.brandColor` was added in stripe-ios 26.16.0.
+  CocoaPods trunk stops at `StripeIdentity` 26.15.0, so CocoaPods builds cannot use it and ignore the
+  color. Stripe's button-style options are `@_spi(InternalOnlyAPI)` (internal), so this plugin does
+  not use them.
+- **Android:** The Stripe sheet registers an activity result launcher, which must happen before the
+  activity starts. The plugin therefore creates the sheet when it attaches to the activity, before
+  Dart can pass any arguments. Logo and color are read from `AndroidManifest.xml` meta-data instead.
+  The button style classes in the Android SDK are annotated `@RestrictTo` (internal), so they are not
+  used either.
+
+#### Android manifest configuration
+
+```xml
+<application ...>
+    <!-- Optional: square brand logo shown in the Stripe flow (defaults to your app icon) -->
+    <meta-data android:name="com.stripe.identity.brand_logo_url"
+               android:value="https://example.com/logo.png" />
+    <!-- Optional: brand color for primary buttons, #RRGGBB or #AARRGGBB -->
+    <meta-data android:name="com.stripe.identity.brand_color"
+               android:value="#635BFF" />
+</application>
 ```
 
-#### Usage Example
-```dart
-await plugin.startVerification(
-  id: 'vs_xxx',
-  key: 'ek_xxx',
-  style: IdentityStyle(
-    buttonBackgroundColor: Colors.blue,
-    buttonTextColor: Colors.white,
-    navigationBarTitle: "My Custom Title",
-  ),
-);
-```
+Note: on Android the `brandLogoUrl` argument passed from Dart is currently ignored for the same
+reason; use the manifest entry.
 
-### 3. **Native Platform Integration**
+### 3. **Everything else is app-theme level**
 
-#### **✅ Flutter → Native Communication**
-The style configuration is now successfully passed from Flutter to both platforms:
+On Android, remaining appearance follows your app's Material Components theme (`styles.xml`):
 
-**Flutter Side:**
-- `IdentityStyle.toMap()` converts the style to a map
-- `MethodChannelIdentity` sends the map via method channel: `if (style != null) 'style': style.toMap()`
-
-**Android Side:**
-- `StripeIdentityPlugin.kt` now extracts: `val styleMap = call.argument<Map<String, Any>>("style")`
-- Receives the map in `startVerification(id, key, styleMap, result)`
-
-**iOS Side:**
-- `StripeIdentityPlugin.swift` now extracts: `let styleMap = args["style"] as? [String: Any]`
-- Receives the map in `startVerification(id:key:brandLogoUrl:styleMap:result:)`
-
-## ⚠️ Important Notes
-
-### Stripe SDK Limitations
-The Stripe Identity SDK has **limited customization options**:
-
-1. **What CAN be customized:**
-   - Brand logo (via `brandLogoUrl` parameter)
-   - App-level Material theme colors (Android) via `styles.xml`
-   - Some navigation bar appearance (iOS) via system APIs
-
-2. **What CANNOT be easily customized:**
-   - Individual button colors within the Stripe UI
-   - Button labels (SDK controls this)
-   - Most text content (controlled by Stripe for compliance)
-   - Screen-specific navigation titles
-
-### Current Implementation Status
-
-**✅ Implemented:**
-- Style parameters are passed from Flutter → Native
-- Error handling is improved with user-friendly messages
-- Plugin infrastructure supports style customization
-
-**⚠️ Limited by Stripe SDK:**
-- The native platforms receive the `styleMap` but Stripe's `IdentityVerificationSheet.Configuration` has very few customization options
-- Most visual customization must be done at the application theme level (Android) or appears system-level (iOS)
-
-### Recommendations
-
-**For Android:**
-The best way to customize appearance is by modifying the Material theme in `styles.xml`:
 ```xml
 <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
     <item name="colorPrimary">@color/your_primary_color</item>
-    <item name="colorPrimaryVariant">@color/your_primary_variant</item>
     <item name="colorOnPrimary">@color/white</item>
 </style>
 ```
 
-**For iOS:**
-Limited to what `IdentityVerificationSheet.Configuration` exposes (primarily the brand logo).
+On iOS the SDK follows system appearance (light/dark mode).
 
-## Files Modified
+## Files involved
 
-### Dart Files:
-1. `/lib/utils/identity_style.dart` - New style configuration class
-2. `/lib/utils/exception.dart` - Exception class (no changes needed)
-3. `/lib/stripe_identity_plugin.dart` - Main plugin with error formatting
-4. `/lib/stripe_identity_plugin_platform_interface.dart` - Added style parameter
-5. `/lib/stripe_identity_plugin_method_channel.dart` - Passes style to native
-6. `/test/stripe_identity_plugin_test.dart` - Updated mock
-
-### Native Files:
-7. `/android/src/main/kotlin/.../StripeIdentityPlugin.kt` - Receives style map
-8. `/ios/stripe_identity_plugin/Sources/stripe_identity_plugin/StripeIdentityPlugin.swift` - Receives style map
+- `lib/utils/identity_style.dart` - style configuration class
+- `lib/stripe_identity_plugin.dart` - main plugin with error formatting
+- `lib/stripe_identity_plugin_method_channel.dart` - passes the style map to native
+- `android/src/main/kotlin/.../StripeIdentityPlugin.kt` - reads brand logo/color from manifest meta-data
+- `ios/stripe_identity_plugin/Sources/stripe_identity_plugin/StripeIdentityPlugin.swift` - maps `buttonBackgroundColor` to `brandColor`
 
 ## Testing
 
-To test the changes:
+Dart unit tests cover the style serialization, the method-channel contract and the error mapping:
 
-1. **Error Handling:**
-   ```dart
-   // Try with invalid credentials
-   final (status, message) = await plugin.startVerification(
-     id: 'invalid_id',
-     key: 'invalid_key',
-   );
-   // Should show: "Verification failed. Please try again."
-   ```
+```sh
+flutter test
+```
 
-2. **Style Passing:**
-   ```dart
-   // Add print statements in native code to verify style map is received
-   final (status, message) = await plugin.startVerification(
-     id: dotenv.env['VERIFICATION_ID']!,
-     key: dotenv.env['VERIFICATION_KEY']!,
-     style: IdentityStyle(
-       buttonBackgroundColor: Colors.blue,
-       buttonTextColor: Colors.white,
-     ),
-   );
-   ```
-
-## Next Steps (Optional)
-
-If you need more customization, you could:
-1. Fork the Stripe Identity SDK and modify its internal UI
-2. Build a custom identity verification flow using Stripe's lower-level APIs
-3. Work within the Material theme customization on Android
-4. Accept the SDK's default appearance and customize only the brand logo
+Visual changes (brand color/logo) must be checked on a device or simulator with a real
+VerificationSession; see `example/README.md`.
