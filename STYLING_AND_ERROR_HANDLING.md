@@ -117,7 +117,7 @@ Limited to what `IdentityVerificationSheet.Configuration` exposes (primarily the
 
 ### Native Files:
 7. `/android/src/main/kotlin/.../StripeIdentityPlugin.kt` - Receives style map
-8. `/ios/Classes/StripeIdentityPlugin.swift` - Receives style map
+8. `/ios/stripe_identity_plugin/Sources/stripe_identity_plugin/StripeIdentityPlugin.swift` - Receives style map
 
 ## Testing
 
