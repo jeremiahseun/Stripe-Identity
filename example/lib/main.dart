@@ -44,8 +44,6 @@ class _MyAppState extends State<MyApp> {
                         "https://img.icons8.com/?size=128&id=77153&format=png",
                     style: const IdentityStyle(
                       buttonBackgroundColor: Colors.blue,
-                      buttonTextColor: Colors.white,
-                      navigationBarTitle: "Stripe Identity Example",
                     ),
                   );
 

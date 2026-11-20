@@ -4,18 +4,18 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'stripe_identity_plugin'
-  s.version          = '0.0.1'
+  s.version          = '2.0.0'
   s.summary          = 'A Flutter plugin for Stripe Identity verification'
   s.description      = <<-DESC
 A Flutter plugin to integrate Stripe Identity verification in iOS and Android apps.
                        DESC
-  s.homepage         = 'http://example.com'
+  s.homepage         = 'https://github.com/jeremiahseun/Stripe-Identity'
   s.license          = { :file => '../LICENSE' }
   s.author           = { 'EL-Joy Technologies' => 'seunjeremiah@gmail.com' }
   s.source           = { :path => '.' }
-  s.source_files = 'Classes/**/*'
+  s.source_files = 'stripe_identity_plugin/Sources/stripe_identity_plugin/**/*.swift'
   s.dependency 'Flutter'
-  s.dependency 'StripeIdentity'
+  s.dependency 'StripeIdentity', '~> 26.15'
   s.platform = :ios, '15.0'
 
   # Flutter.framework does not contain a i386 slice.

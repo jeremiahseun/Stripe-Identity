@@ -13,11 +13,12 @@ import 'package:stripe_identity_plugin/stripe_identity_plugin.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('getPlatformVersion test', (WidgetTester tester) async {
+  testWidgets('startVerification returns a message on the host platform',
+      (WidgetTester tester) async {
     final StripeIdentityPlugin plugin = StripeIdentityPlugin();
-    final version = await plugin.startVerification(id: "id", key: "key");
-    // The version string depends on the host platform running the test, so
-    // just assert that some non-empty string is returned.
-    expect(version.$2?.isNotEmpty, true);
+    final result = await plugin.startVerification(id: "id", key: "key");
+    // Invalid credentials are rejected by the native SDK, so we only assert that
+    // a non-empty message comes back.
+    expect(result.$2?.isNotEmpty, true);
   });
 }

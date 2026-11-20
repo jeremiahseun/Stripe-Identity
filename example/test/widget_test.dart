@@ -1,27 +1,48 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:identity_example/main.dart';
 
 void main() {
-  testWidgets('Verify Platform version', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  const channel = MethodChannel('stripe_identity_plugin');
+
+  setUp(() {
+    dotenv.testLoad(
+        fileInput: 'VERIFICATION_ID=vs_test\nVERIFICATION_KEY=ek_test');
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null);
+  });
+
+  testWidgets('shows the start button', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
-    // Verify that platform version is retrieved.
-    expect(
-      find.byWidgetPredicate(
-        (Widget widget) =>
-            widget is Text && widget.data!.startsWith('Running on:'),
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('Stripe Identity Plugin'), findsOneWidget);
+    expect(find.text('Start verification'), findsOneWidget);
+  });
+
+  testWidgets('forwards credentials to the plugin and shows the result', (
+    WidgetTester tester,
+  ) async {
+    MethodCall? received;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      received = call;
+      return 'canceled';
+    });
+
+    await tester.pumpWidget(const MyApp());
+    await tester.tap(find.text('Start verification'));
+    await tester.pumpAndSettle();
+
+    expect(received?.method, 'startVerification');
+    expect((received?.arguments as Map)['id'], 'vs_test');
+    expect((received?.arguments as Map)['key'], 'ek_test');
+    expect(find.text('Verification is canceled.'), findsOneWidget);
   });
 }

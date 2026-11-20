@@ -32,3 +32,6 @@ Runner/GeneratedPluginRegistrant.*
 !default.mode2v3
 !default.pbxuser
 !default.perspectivev3
+
+# Lock file for the example app goes stale with every Stripe SDK bump; let CocoaPods resolve fresh.
+Podfile.lock

@@ -6,22 +6,42 @@ import kotlin.test.Test
 import org.mockito.Mockito
 
 /*
- * This demonstrates a simple unit test of the Kotlin portion of this plugin's implementation.
+ * Unit tests for the parts of the plugin that do not need a real Activity.
  *
- * Once you have built the plugin's example app, you can run these tests from the command
- * line by running `./gradlew testDebugUnitTest` in the `example/android/` directory, or
- * you can run them directly from IDEs that support JUnit such as Android Studio.
+ * Run them with `./gradlew :stripe_identity_plugin:testDebugUnitTest` from the
+ * `example/android/` directory (after building the example app once).
  */
-
 internal class IdentityPluginTest {
+
+  private fun newResult(): MethodChannel.Result =
+    Mockito.mock(MethodChannel.Result::class.java)
+
   @Test
-  fun onMethodCall_getPlatformVersion_returnsExpectedValue() {
-    val plugin = StripeIdentityPlugin()
+  fun unknownMethod_returnsNotImplemented() {
+    val result = newResult()
 
-    val call = MethodCall("getPlatformVersion", null)
-    val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
-    plugin.onMethodCall(call, mockResult)
+    StripeIdentityPlugin().onMethodCall(MethodCall("getPlatformVersion", null), result)
 
-    Mockito.verify(mockResult).success("Android " + android.os.Build.VERSION.RELEASE)
+    Mockito.verify(result).notImplemented()
+  }
+
+  @Test
+  fun startVerification_withoutIdOrKey_returnsInvalidArguments() {
+    val result = newResult()
+    val call = MethodCall("startVerification", mapOf("brandLogoUrl" to "https://example.com/logo.png"))
+
+    StripeIdentityPlugin().onMethodCall(call, result)
+
+    Mockito.verify(result).error("INVALID_ARGUMENTS", "Missing id or key", null)
+  }
+
+  @Test
+  fun startVerification_withoutAttachedActivity_returnsNoActivity() {
+    val result = newResult()
+    val call = MethodCall("startVerification", mapOf("id" to "vs_123", "key" to "ek_456"))
+
+    StripeIdentityPlugin().onMethodCall(call, result)
+
+    Mockito.verify(result).error("NO_ACTIVITY", "Plugin requires a ComponentActivity.", null)
   }
 }
