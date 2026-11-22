@@ -56,17 +56,18 @@ public class StripeIdentityPlugin: NSObject, FlutterPlugin {
     ///   - styleMap: Optional styling configuration from Flutter.
     ///   - result: A closure to return the result of the verification flow to Flutter.
     private func startVerification(id: String, key: String, brandLogoUrl: String?, styleMap: [String: Any]?, result: @escaping FlutterResult) {
-        // Get the root view controller of the application.
-        guard let viewController = UIApplication.shared.windows.first?.rootViewController else {
+        // Get the top-most view controller of the foreground window scene.
+        guard let viewController = topViewController() else {
             // Return an error if the root view controller cannot be found.
             result(FlutterError(code: "NO_VIEW_CONTROLLER", message: "Unable to get the root view controller", details: nil))
             return
         }
 
         // Create a configuration for the IdentityVerificationSheet.
-        let configuration = IdentityVerificationSheet.Configuration(
+        let configuration = makeConfiguration(
             // Load the brand logo from the URL.
-            brandLogo: loadBrandLogo(from: brandLogoUrl) ?? UIImage(systemName: "plus") ?? UIImage()
+            brandLogo: loadBrandLogo(from: brandLogoUrl) ?? appIconImage() ?? UIImage(),
+            styleMap: styleMap
         )
 
         // Create an instance of the IdentityVerificationSheet.
@@ -103,23 +104,86 @@ public class StripeIdentityPlugin: NSObject, FlutterPlugin {
         }
     }
 
+    /// Builds the Stripe sheet configuration.
+    ///
+    /// `Configuration.brandColor` only exists in stripe-ios 26.16.0 and later. The Swift Package
+    /// declares `from: "26.16.0"`, so the API is always available there. CocoaPods trunk stops at
+    /// StripeIdentity 26.15.0, so CocoaPods builds compile without it and ignore the brand color.
+    ///
+    /// - Parameters:
+    ///   - brandLogo: The brand logo image.
+    ///   - styleMap: Optional styling configuration from Flutter.
+    private func makeConfiguration(brandLogo: UIImage, styleMap: [String: Any]?) -> IdentityVerificationSheet.Configuration {
+        #if SWIFT_PACKAGE
+        var configuration = IdentityVerificationSheet.Configuration(brandLogo: brandLogo)
+        // The only public styling option besides the logo; the SDK picks black or white button
+        // text for contrast.
+        configuration.brandColor = brandColor(from: styleMap)
+        return configuration
+        #else
+        return IdentityVerificationSheet.Configuration(brandLogo: brandLogo)
+        #endif
+    }
+
+    /// Finds the view controller the verification sheet should be presented from.
+    ///
+    /// Uses the foreground-active window scene (falling back to any connected scene) and walks up
+    /// to the top-most presented view controller, so presenting works in multi-scene apps and when
+    /// another view controller is already being presented.
+    private func topViewController() -> UIViewController? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
+        let window = scene?.windows.first(where: { $0.isKeyWindow }) ?? scene?.windows.first
+        var top = window?.rootViewController
+        while let presented = top?.presentedViewController {
+            top = presented
+        }
+        return top
+    }
+
+    /// Reads the optional brand color from the style map sent by Flutter.
+    ///
+    /// Flutter encodes colors as 32-bit ARGB integers (`Color.toARGB32()`).
+    ///
+    /// - Parameter styleMap: The style configuration from Flutter, if any.
+    /// - Returns: The brand color, or `nil` to use the Stripe SDK default.
+    private func brandColor(from styleMap: [String: Any]?) -> UIColor? {
+        guard let argb = (styleMap?["buttonBackgroundColor"] as? NSNumber)?.uint32Value else {
+            return nil
+        }
+        let alpha = CGFloat((argb >> 24) & 0xFF) / 255
+        let red = CGFloat((argb >> 16) & 0xFF) / 255
+        let green = CGFloat((argb >> 8) & 0xFF) / 255
+        let blue = CGFloat(argb & 0xFF) / 255
+        return UIColor(red: red, green: green, blue: blue, alpha: alpha)
+    }
+
     /// Loads the brand logo from the given URL.
     ///
     /// - Parameter urlString: The URL of the brand logo.
-    /// - Returns: The brand logo image, or a default image if the URL is invalid or the image cannot be loaded.
+    /// - Returns: The brand logo image, or `nil` if the URL is missing or invalid, or the image cannot be loaded.
     private func loadBrandLogo(from urlString: String?) -> UIImage? {
-        // Check if the URL string is valid.
         guard let urlString = urlString,
-              // Create a URL from the string.
               let url = URL(string: urlString),
-              // Load the data from the URL.
-              let data = try? Data(contentsOf: url),
-              // Create an image from the data.
-              let image = UIImage(data: data) else {
-            // Return a default image if the URL is invalid or the image cannot be loaded.
-            return UIImage(systemName: "plus") ?? UIImage()
+              let data = try? Data(contentsOf: url) else {
+            return nil
         }
-        // Return the loaded image.
-        return image
+        return UIImage(data: data)
+    }
+
+    /// The host app's primary icon, used as the brand logo when no logo URL is provided or it fails to load.
+    ///
+    /// This mirrors the Android plugin, which falls back to the application icon. It reads the
+    /// primary icon declared in the app's Info.plist (`CFBundleIcons`).
+    ///
+    /// - Returns: The app icon, or `nil` if it cannot be resolved (the caller then uses an empty image).
+    private func appIconImage() -> UIImage? {
+        guard let icons = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
+              let primaryIcon = icons["CFBundlePrimaryIcon"] as? [String: Any],
+              let iconFiles = primaryIcon["CFBundleIconFiles"] as? [String],
+              let iconName = iconFiles.last else {
+            return nil
+        }
+        return UIImage(named: iconName)
     }
 }
